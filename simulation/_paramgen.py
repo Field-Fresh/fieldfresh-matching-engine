@@ -1,0 +1,121 @@
+import numpy as np
+import gurobipy as gp
+from typing import Dict, Callable, Tuple, Iterable
+import inspect
+
+import _utils as utils
+
+class TestCase:
+    '''
+    Q_K - pmf of product k (aggregate demand distribution for product k) {product: demand}
+    P_K - "fair" price per product k (can be true equilbirum price) {product: price}
+    D_scap_p - pmf of *s*upply *cap*acity *p*arameter {parameter: probability}
+    D_dcap_p - pmf of *d*emand *cap*acity *p*arameter {parameter: probability}
+    s_bounds - function: (capacity_paramter) -> (min, max) where min and max are used as parameters for a uniform distribution to sample for capacity
+    d_bounds - function: (capacity_paramter) -> (min, max) where min and max are used as parameters for a uniform distribution to sample for capacity
+    s_subsize - size subset of product set K that supplier s will supply/produce {supplier: subset_size} (This is based on theta_i)
+    lb_fn - function: (seller_capacity, product_price) -> seller lower bound price
+    ub_fn - function: (buyer_capacity, product_price) -> buyer upper bound price
+    dist_bounds - (min, max) minimum and maximum distance between buyers/sellers
+
+    See https://www.dropbox.com/scl/fi/td4qd68uiwjkxmhivz6f5/Simulation-Strategy.paper?dl=0&rlkey=lylhvexxwjedxgv90h1kkgzl8 for more info
+    '''
+
+    def __init__(
+        self,
+        size_I: int,
+        size_J: int,
+        size_K: int,
+        Q_K: Dict[int, float],
+        P_K: Dict[int, float],
+        D_scap_p: Dict[int, float],
+        D_dcap_p: Dict[int, float],
+        s_bounds: Callable[[int], Tuple[int, int]],
+        d_bounds: Callable[[int], Tuple[int, int]],
+        s_subsize: Dict[int, int],
+        lb_fn: Callable[[int, float], float],
+        ub_fn: Callable[[int, float], float],
+        dist_bounds: Tuple[float, float],
+        random_seed: int = 0
+    ):
+        np.random.seed(random_seed)
+        # assertions
+        assert len(Q_K) == size_K, f'Q_K does not have {size_K} elements according to parameter `size_K`'
+        assert len(P_K) == size_K, f'P_K does not have {size_K} elements according to parameter `size_K`'
+        assert utils.non_zero(P_K), f'P_K has negative or 0 prices'
+        # assert s_subsize.keys() == set(range(size_I)), f's_subsize has wrong keys, either incomplete or with non existent seller IDs'
+        assert np.all([i <= size_K for i in s_subsize.values()]), f'subset size for a seller cannot be larger than `size_K`: {size_K}'
+        assert dist_bounds[0] >=0 and dist_bounds[1] >=0, f'cannot have negative distances. Must be (+,+)'
+
+        # try Callables and assert I/O types??
+
+        # should these be replaced with np.random.multinomial?
+
+        # 4.
+        D_scap_p, D_dcap_p = utils.DiscreteSampler(
+            D_scap_p), utils.DiscreteSampler(D_dcap_p)
+        param_i, param_j = [D_scap_p() for i in range(size_I)], [
+            D_dcap_p() for j in range(size_J)]
+
+
+        # 4 a), b)
+        cap_i, cap_j = [np.random.uniform(*s_bounds(theta_i)) for theta_i in param_i], [
+            np.random.uniform(*d_bounds(theta_j)) for theta_j in param_j]
+
+        # 5.
+        products_i = [utils.dist_subset(Q_K, keys=np.random.choice(list(
+            Q_K.keys()), size=s_subsize[theta_i], replace=False)) for theta_i in param_i]
+        
+
+        s_ik = {
+            i: dict(zip(
+                products_i[i].keys(), np.random.multinomial(
+                    n=cap_i[i], pvals=list(products_i[i].values()), size=1)[0]
+            ))
+            for i in range(size_I)
+        }
+
+        # 5 a)
+        d_jk = {
+            j: dict(zip(
+                Q_K.keys(), np.random.multinomial(
+                    n=cap_j[j], pvals=list(Q_K.values()), size=1)[0]
+            ))
+            for j in range(size_J)
+        }
+
+        # 6.
+        l_ik = {
+            i: {k: lb_fn(cap_i[i], P_K[k]) for k in P_K} ## this iterates through all products... this should only be for products for that seller
+            for i in range(size_I)
+        }
+        # 6 a)
+        u_jk = {
+            j: {k: ub_fn(cap_j[j], P_K[k]) for k in P_K}
+            for j in range(size_J)
+        }
+
+        c_ij = {(i,j): np.random.uniform(*dist_bounds) for i in range(size_I) for j in range(size_J)}
+
+        s_ik = utils.flatten_dict(s_ik)
+        d_jk = utils.flatten_dict(d_jk)
+        l_ik = utils.flatten_dict(l_ik)
+        u_jk = utils.flatten_dict(u_jk)
+
+        self.params = {
+            'SELLERS': list(range(size_I)), 'BUYERS': list(range(size_J)), 'PRODUCTS': list(range(size_K)),
+            's_i': s_ik, 'd_j': d_jk, 'p_i': l_ik, 'p_j': u_jk, 'C': c_ij
+        }
+
+    
+    def run(self, model: gp.Model):
+
+        params = inspect.signature(model).parameters.keys() ## get arguments required for model
+
+        params = {i: self.params[i] for i in params} ## select params which are required by model
+        
+        solver = model(**params) ## pass in selected params as keyword arguments
+
+        solver.optimize()
+
+        return solver.summary_stats()    

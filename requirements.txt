@@ -1,0 +1,6 @@
+tomodachi==0.21.2
+gurobipy==9.0.3
+numpy==1.19.2
+seaborn==0.11.1
+matplotlib==3.3.4
+pandas==1.2.1
