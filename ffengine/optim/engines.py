@@ -80,3 +80,10 @@ class OMMEngine(Engine):
                     u.int_order_id, v.int_order_id
                 )] = int(is_same_prod & is_available & is_serviceable)
 
+    def match(self):
+        solver = OrderMatchingModel(**self._params)
+        solver.optimize()
+        self._solved_model = solver
+    
+
+
