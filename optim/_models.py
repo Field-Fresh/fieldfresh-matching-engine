@@ -1,3 +1,10 @@
+import gurobipy as gp
+from gurobipy import GRB
+import numpy as np
+from typing import List, Dict, Tuple
+
+big_M = 1e7
+
 class OrderMatchingModel(gp.Model):
 
     '''The following is a mapping from model notation to code notation
@@ -100,6 +107,7 @@ class OrderMatchingModel(gp.Model):
         }
 
     def summary_stats(self) -> dict:
+        # TODO: Remove this function when simulation._paramgen metrics are completed
 
         x_uv = self.__x_uv
         w_uv = self.__w_uv
@@ -178,7 +186,7 @@ class OrderMatchingModel(gp.Model):
         }
 
         seller_surplus_dist = {
-            i: sum([ sum([.5*(p_u[u] - p_v[v])*x_uv[u, v] - c_uv[u, v]*w_uv[u,v] for u in BUYORDERS ]) for v in SELLERS[j]])
+            i: sum([ sum([.5*(p_u[u] - p_v[v])*x_uv[u, v] - c_uv[u, v]*w_uv[u,v] for u in BUYORDERS ]) for v in SELLERS[i]])
             for i in SELLERS
         }
 
