@@ -7,7 +7,7 @@ class SellOrder:
     seller_id: str
     product_id: str
     
-    max_price_cent: int
+    min_price_cent: int
     quantity: int
     time_activation: int
     time_expiry: int
@@ -25,7 +25,7 @@ class BuyOrder:
     buyer_id: str
     product_id: str
 
-    min_price_cents: int
+    max_price_cents: int
     quantity: int
     time_activation: int
     time_expiry: int
@@ -97,12 +97,12 @@ class OrderSet:
         order.int_product_id = self._products[product]
 
 
-    def iter_buy_orders(self) -> Iterator:
+    def iter_buy_orders(self) -> Iterator[BuyOrder]:
         for u in self._buy_orders:
             yield u
 
     
-    def iter_sell_orders(self) -> Iterator:
+    def iter_sell_orders(self) -> Iterator[SellOrder]:
         for v in self._sell_orders:
             yield v
 
