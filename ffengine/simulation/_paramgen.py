@@ -2,8 +2,7 @@ import numpy as np
 import gurobipy as gp
 from typing import Dict, Callable, Tuple, Iterable
 
-import _utils as utils
-from optim.engines import Engine
+import ffengine.simulation._utils as utils
 
 class TestCase:
     '''
@@ -117,7 +116,7 @@ class TestCase:
         
 
     
-    def run(self, engine: Engine):
+    def run(self, engine):
 
         # pass self.Orders to engine
 
