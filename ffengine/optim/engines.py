@@ -21,14 +21,12 @@ class Engine(abc.ABC):
     def get_matches(self) -> MatchSet:
         pass
 
-class Params:
-    '''dummy/empty class used to organize params for Engines'''
 
 class OMMEngine(Engine):
 
     def __init__(self, orderset: OrderSet):
         self.orderset = orderset
-        self._params = Params()
+        self._params = {}
 
     def get_orderset(self):
         return self.orderset
@@ -37,24 +35,24 @@ class OMMEngine(Engine):
         ''' Constructs the parameters for OMM based on the given OrderSet. This must be run before `match`
         straightforward approach: O(U*V + U + V)'''
 
-        self._params.U = range(self.orderset.n_buy_orders)
-        self._params.V = range(self.orderset.n_sell_orders)
+        self._params['BUYORDERS'] = range(self.orderset.n_buy_orders)
+        self._params['SELLORDERS'] = range(self.orderset.n_sell_orders)
 
-        self._params.p_u = {}
-        self._params.p_v = {}
-        self._params.q_u = {}
-        self._params.q_v = {}
+        self._params['p_u'] = {}
+        self._params['p_v'] = {}
+        self._params['q_u'] = {}
+        self._params['q_v'] = {}
 
-        self._params.f_uv = {}
-        self._params.c_uv = {}
+        self._params['f_uv'] = {}
+        self._params['c_uv'] = {}
 
         for u in self.orderset.iter_buy_orders():
-            self._params.p_u[u.int_order_id] = u.max_price_cents
-            self._params.q_u[u.int_order_id] = u.quantity
+            self._params['p_u'][u.int_order_id] = u.max_price_cents
+            self._params['q_u'][u.int_order_id] = u.quantity
 
         for v in self.orderset.iter_sell_orders():
-            self._params.p_v[v.int_order_id] = v.min_price_cent
-            self._params.q_v[v.int_order_id] = v.quantity
+            self._params['p_v'][v.int_order_id] = v.min_price_cent
+            self._params['q_v'][v.int_order_id] = v.quantity
 
         
         ## construct uv params
@@ -65,7 +63,7 @@ class OMMEngine(Engine):
                     (v.lat, v.long)
                 )
 
-                self._params.c_uv[
+                self._params['c_uv'][
                     (u.int_order_id, v.int_order_id)
                 ] = d
 
@@ -78,7 +76,7 @@ class OMMEngine(Engine):
                 is_serviceable = (d <= v.service_range)
 
                 # 1 if all conditions are met, 0 otherwise
-                self._params.f_uv[(
+                self._params['f_uv'][(
                     u.int_order_id, v.int_order_id
                 )] = int(is_same_prod & is_available & is_serviceable)
 
