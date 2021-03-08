@@ -1,9 +1,9 @@
 import numpy as np
 import gurobipy as gp
 from typing import Dict, Callable, Tuple, Iterable
-import inspect
 
 import _utils as utils
+from optim.engines import Engine
 
 class TestCase:
     '''
@@ -66,7 +66,9 @@ class TestCase:
         products_i = [utils.dist_subset(Q_K, keys=np.random.choice(list(
             Q_K.keys()), size=s_subsize[theta_i], replace=False)) for theta_i in param_i]
         
+        ## Ignore everything above this
 
+        # {seller_id: {product_id : quantity_supplied}}
         s_ik = {
             i: dict(zip(
                 products_i[i].keys(), np.random.multinomial(
@@ -76,6 +78,7 @@ class TestCase:
         }
 
         # 5 a)
+        # {buyer_id: {product_id : quantity_demanded}}
         d_jk = {
             j: dict(zip(
                 Q_K.keys(), np.random.multinomial(
@@ -85,11 +88,13 @@ class TestCase:
         }
 
         # 6.
+        # {seller_id: {product_id : min_price}}
         l_ik = {
             i: {k: lb_fn(cap_i[i], P_K[k]) for k in P_K} ## this iterates through all products... this should only be for products for that seller
             for i in range(size_I)
         }
         # 6 a)
+        # {buyer_id: {product_id : max_price}}
         u_jk = {
             j: {k: ub_fn(cap_j[j], P_K[k]) for k in P_K}
             for j in range(size_J)
@@ -97,25 +102,25 @@ class TestCase:
 
         c_ij = {(i,j): np.random.uniform(*dist_bounds) for i in range(size_I) for j in range(size_J)}
 
-        s_ik = utils.flatten_dict(s_ik)
-        d_jk = utils.flatten_dict(d_jk)
-        l_ik = utils.flatten_dict(l_ik)
-        u_jk = utils.flatten_dict(u_jk)
+        # assume lat/long
 
-        self.params = {
-            'SELLERS': list(range(size_I)), 'BUYERS': list(range(size_J)), 'PRODUCTS': list(range(size_K)),
-            's_i': s_ik, 'd_j': d_jk, 'p_i': l_ik, 'p_j': u_jk, 'C': c_ij
-        }
+
+        # format into `Orders`
+        # SellOrder: (supply, supplier, price, product, availbility, expiry, service range)
+        # (supply, supplier, product)
+        # (price, supplier, product)
+
+        # your task here: given s_ik, d_jk, l_ik, u_jk (as well as generating other info) => [(agent_id, quantity, price, ...)]
+        # construct an OrderSet with this data (should be able to just pass to the constructor) and save it to this object
+        # self.Orders = OrderSet(info)
+
+        
 
     
-    def run(self, model: gp.Model):
+    def run(self, engine: Engine):
 
-        params = inspect.signature(model).parameters.keys() ## get arguments required for model
+        # pass self.Orders to engine
 
-        params = {i: self.params[i] for i in params} ## select params which are required by model
-        
-        solver = model(**params) ## pass in selected params as keyword arguments
+        # retreive MatchSet from engine
 
-        solver.optimize()
-
-        return solver.summary_stats()    
+        pass  
