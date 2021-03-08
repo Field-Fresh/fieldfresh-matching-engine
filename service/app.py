@@ -9,6 +9,8 @@ from tomodachi.envelope import JsonBase
 from data import MatchSet, OrderSet, BuyOrder, SellOrder
 from optim.engines import OMMEngine
 
+# TODO: REMOVE SECRETE KEYS AND CONFIGS YOU IDIOT!!!!!
+
 class ExampleAWSSNSSQSService(tomodachi.Service):
     name = "example-aws-sns-sqs-service"
     log_level = "INFO"
