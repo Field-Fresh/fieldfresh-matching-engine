@@ -8,6 +8,9 @@ big_M = 1e7
 class OrderMatchingModel(gp.Model):
 
     '''The following is a mapping from model notation to code notation
+
+    Objective function: maximize seller profit
+
     Sets
     U -> BUY Orders
     V -> SELL Orders
@@ -74,10 +77,8 @@ class OrderMatchingModel(gp.Model):
         #bind w_uv to x_uv: Ensure w_uv is 1 if BUY/SELL orders u-v match for a specific quantity, 0 if u-v not matched.
         self.addConstrs( (x_uv[u,v] <= big_M*w_uv[u,v] for u in BUYORDERS for v in SELLORDERS ), "(3) binding w_uv")
 
-        #positive seller surplus: 
-        #self.addConstrs( (x_uv[u,v]*profitFunc(p_u[u],p_v[v]) - c_uv[u,v]*w_uv[u,v] >= 0 for u in BUYORDERS for v in SELLORDERS ), "(4.1) function-based seller surplus")
-        
-        self.addConstrs( (x_uv[u,v]*self.price(p_u[u], p_v[v]) - c_uv[u,v]*w_uv[u,v] >= 0 for u in BUYORDERS for v in SELLORDERS ), "(4.2) specific instance seller surplus")
+        #positive seller profit
+        self.addConstrs( (x_uv[u,v]*self.price(p_u[u], p_v[v]) - c_uv[u,v]*w_uv[u,v] >= 0 for u in BUYORDERS for v in SELLORDERS ), "(4.2) specific instance seller profit")
 
         #feasibility contraint: If BUYORDER u is paired with SELLORDER v
         self.addConstrs( (x_uv[u,v] <= big_M*f_uv[u,v] for u in BUYORDERS for v in SELLORDERS ), "(5) feasibility requirment")
