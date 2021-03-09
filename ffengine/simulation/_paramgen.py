@@ -2,7 +2,11 @@ import numpy as np
 import gurobipy as gp
 from typing import Dict, Callable, Tuple, Iterable
 
+from ffengine.optim.engines import Engine
+
 import ffengine.simulation._utils as utils
+
+from ffengine.data.orders import SellOrder, BuyOrder, OrderSet
 
 class TestCase:
     '''
@@ -101,7 +105,77 @@ class TestCase:
 
         c_ij = {(i,j): np.random.uniform(*dist_bounds) for i in range(size_I) for j in range(size_J)}
 
-        # assume lat/long
+        # assume lat/long, activeTimes, and ServiceRange
+
+        #Loop throught buyers to create BuyOrders
+
+        tempOrderSet = OrderSet()
+
+        tempSentry = 0
+
+        #Buy Order Loop!
+
+        for b in range(size_J):
+
+            for p in range(size_K):
+
+                tempBuyOrder = BuyOrder(
+                    int_buyer_id= b,
+                    int_order_id= tempSentry,
+                    int_product_id=p,
+
+                    lat = 110.1,
+                    long = 120.5,
+                    
+                    quantity = d_jk[b][p],
+                    max_price_cents = u_jk[b][p],
+
+                    time_activation = 1200000,
+                    time_expiry = 1300000,
+
+                    order_id = 'BuyOrder-' + str(tempSentry),
+                    product_id = 'Product-' + str(p),
+                    buyer_id = 'Buyer-' + str(b)
+
+                )
+
+                tempOrderSet.add_buy_order(tempBuyOrder)
+
+                tempSentry += 1
+
+        tempSentry = 0
+
+        #Sell Order Loop
+
+        for s in range(size_I):
+
+            for p in range(size_K):
+
+                tempSellOrder = SellOrder(
+                    int_seller_id= s,
+                    int_order_id= tempSentry,
+                    int_product_id=p,
+
+                    lat = 110.1,
+                    long = 120.5,
+                    
+                    quantity = s_ik[s][p],
+                    min_price_cents = l_ik[s][p],
+
+                    time_activation = 1200000,
+                    time_expiry = 1300000,
+                    service_range = 100,
+
+                    order_id = 'SellOrder-' + str(tempSentry),
+                    product_id = 'Product-' + str(p),
+                    seller_id = 'Seller-' + str(s)
+
+                )
+
+                tempOrderSet.add_sell_order(tempSellOrder)
+
+                tempSentry += 1
+
 
 
         # format into `Orders`
@@ -113,12 +187,16 @@ class TestCase:
         # construct an OrderSet with this data (should be able to just pass to the constructor) and save it to this object
         # self.Orders = OrderSet(info)
 
-        
+        self.order_set = tempOrderSet
 
     
-    def run(self, engine):
+    def run(self, engine: Engine):
 
         # pass self.Orders to engine
+
+        matcher = engine(self.order_set)
+        matcher.construct_params()
+        matcher.match()
 
         # retreive MatchSet from engine
 

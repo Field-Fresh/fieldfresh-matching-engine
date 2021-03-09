@@ -7,7 +7,7 @@ class SellOrder:
     seller_id: str
     product_id: str
     
-    min_price_cent: int
+    min_price_cents: int
     quantity: int
     time_activation: int
     time_expiry: int
@@ -52,12 +52,13 @@ class OrderSet:
     
 
     def add_buy_order(self, order: BuyOrder):
-        self._buy_orders.append(order)
-        self.n_buy_orders += 1
-
+    
         new_int_id = len(self._buy_orders)
         new_int_agent = len(self._buyers)
         new_int_product = len(self._products)
+
+        self.n_buy_orders += 1
+        self._buy_orders.append(order)
 
         agent = order.buyer_id
         product = order.product_id
@@ -75,14 +76,15 @@ class OrderSet:
 
 
     def add_sell_order(self, order: SellOrder):
-        self._sell_orders.append(order)
-        self.n_sell_orders += 1
 
         new_int_id = len(self._sell_orders)
         new_int_agent = len(self._sellers)
         new_int_product = len(self._products)
 
-        agent = order.buyer_id
+        self._sell_orders.append(order)
+        self.n_sell_orders += 1
+
+        agent = order.seller_id
         product = order.product_id
 
         if not (agent in self._sellers):

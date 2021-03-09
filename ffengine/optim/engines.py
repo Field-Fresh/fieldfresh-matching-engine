@@ -51,7 +51,7 @@ class OMMEngine(Engine):
             self._params['q_u'][u.int_order_id] = u.quantity
 
         for v in self.orderset.iter_sell_orders():
-            self._params['p_v'][v.int_order_id] = v.min_price_cent
+            self._params['p_v'][v.int_order_id] = v.min_price_cents
             self._params['q_v'][v.int_order_id] = v.quantity
 
         
@@ -84,6 +84,9 @@ class OMMEngine(Engine):
         solver = OrderMatchingModel(**self._params)
         solver.optimize()
         self._solved_model = solver
-    
+
+
+    def get_matches(self):
+        pass
 
 

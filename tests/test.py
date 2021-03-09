@@ -1,5 +1,7 @@
 from ffengine.simulation import TestCase
 
+from ffengine.optim.engines import OMMEngine
+
 
 ## define sets for test case
 I1 = list(range(5))
@@ -14,7 +16,10 @@ test_case1 = TestCase(
     s_bounds=lambda c: (1,10) if c == 0 else (10, 20),
     d_bounds=lambda c: (3, 7),
     s_subsize={i: len(K1) for i in I1},
-    lb_fn= lambda i: i,
+    lb_fn= lambda k, i: i,
     ub_fn= lambda c, p: p,
     dist_bounds= (1, 5),
 )
+
+
+test_case1.run(OMMEngine)
