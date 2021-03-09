@@ -13,13 +13,13 @@ class OrderMatchingModel(gp.Model):
     V -> SELL Orders
 
     Parameters
-    p_u - price upper bound (For a Buyers)
-    p_v - price lower bound (For a Sellers)
+    p_u - price upper bound (For a Buy Order) (this is an integer indicating cents)
+    p_v - price lower bound (For a Sell Order) (this is an integer indicating cents)
     
-    q_u - quantity ordered (By a Buyer)
-    q_v - quantity supplied (By a Sellers)
+    q_u - quantity ordered (By a Buy Order) (this is an integer indicating pounds)
+    q_v - quantity supplied (By a Sell Order) (this is an integer indicating pounds)
 
-    c_uv - Fixed transaction cost between a Buyer and a Seller
+    c_uv - Fixed transaction cost between a Buyer and a Seller (this is also an integer indicating cents)
 
     f_uv - Feasibility indicator (Same product? and fasible time iterval? 1, else 0 for each UV combo)
 
@@ -33,11 +33,11 @@ class OrderMatchingModel(gp.Model):
         self,
         BUYORDERS: List[int],
         SELLORDERS: List[int],
-        p_u: Dict[int, float],
-        p_v: Dict[int, float],
-        q_u: Dict[int, float],
-        q_v: Dict[int, float],
-        c_uv: Dict[Tuple[int, int], float],
+        p_u: Dict[int, int],
+        p_v: Dict[int, int],
+        q_u: Dict[int, int],
+        q_v: Dict[int, int],
+        c_uv: Dict[Tuple[int, int], int],
         f_uv: Dict[Tuple[int, int], int]):
 
         super().__init__('order-matching-model')
@@ -86,7 +86,7 @@ class OrderMatchingModel(gp.Model):
         self.setObjective(obj, GRB.MAXIMIZE)
 
     def price(self, p_u, p_v):
-        return (p_u + p_v)/2
+        return np.ceil((p_u + p_v)/2) # ensure that final price is an integer
 
     def getVars(self) -> dict:
         return {
