@@ -2,7 +2,7 @@ import numpy as np
 import gurobipy as gp
 from typing import Dict, Callable, Tuple, Iterable
 
-from ffengine.optim.engines import Engine
+from ffengine.optim.engines import Engine, OMMEngine
 
 import ffengine.simulation._utils as utils
 
@@ -10,8 +10,8 @@ from ffengine.data.orders import SellOrder, BuyOrder, OrderSet
 
 class TestCase:
     '''
-    Q_K - pmf of product k (aggregate demand distribution for product k) {product: demand}
-    P_K - "fair" price per product k (can be true equilbirum price) {product: price}
+    Q_K - pmf of product k in lbs (aggregate demand distribution for product k) {product: demand}
+    P_K - "fair" price per product k in cents (can be true equilbirum price) {product: price}
     D_scap_p - pmf of *s*upply *cap*acity *p*arameter {parameter: probability}
     D_dcap_p - pmf of *d*emand *cap*acity *p*arameter {parameter: probability}
     s_bounds - function: (capacity_paramter) -> (min, max) where min and max are used as parameters for a uniform distribution to sample for capacity
@@ -19,7 +19,7 @@ class TestCase:
     s_subsize - size subset of product set K that supplier s will supply/produce {supplier: subset_size} (This is based on theta_i)
     lb_fn - function: (seller_capacity, product_price) -> seller lower bound price
     ub_fn - function: (buyer_capacity, product_price) -> buyer upper bound price
-    dist_bounds - (min, max) minimum and maximum distance between buyers/sellers
+    cost_bounds - (min, max) minimum and maximum transaction cost between buyers/sellers (this is in cents!)
 
     See https://www.dropbox.com/scl/fi/td4qd68uiwjkxmhivz6f5/Simulation-Strategy.paper?dl=0&rlkey=lylhvexxwjedxgv90h1kkgzl8 for more info
     '''
@@ -38,7 +38,7 @@ class TestCase:
         s_subsize: Dict[int, int],
         lb_fn: Callable[[int, float], float],
         ub_fn: Callable[[int, float], float],
-        dist_bounds: Tuple[float, float],
+        cost_bounds: Tuple[float, float],
         random_seed: int = 0
     ):
         np.random.seed(random_seed)
@@ -48,7 +48,7 @@ class TestCase:
         assert utils.non_zero(P_K), f'P_K has negative or 0 prices'
         # assert s_subsize.keys() == set(range(size_I)), f's_subsize has wrong keys, either incomplete or with non existent seller IDs'
         assert np.all([i <= size_K for i in s_subsize.values()]), f'subset size for a seller cannot be larger than `size_K`: {size_K}'
-        assert dist_bounds[0] >=0 and dist_bounds[1] >=0, f'cannot have negative distances. Must be (+,+)'
+        assert cost_bounds[0] >=0 and cost_bounds[1] >=0, f'cannot have negative distances. Must be (+,+)'
 
         # try Callables and assert I/O types??
 
@@ -103,7 +103,7 @@ class TestCase:
             for j in range(size_J)
         }
 
-        c_ij = {(i,j): np.random.uniform(*dist_bounds) for i in range(size_I) for j in range(size_J)}
+        c_ij = {(i,j): np.random.uniform(*cost_bounds) for i in range(size_I) for j in range(size_J)}
 
         # assume lat/long, activeTimes, and ServiceRange
 
@@ -181,12 +181,25 @@ class TestCase:
 
         self.order_set = tempOrderSet
 
+        # NOTE: This is a dirty solution that manually sets the cost parameter
+        self.dist_uv = {}
+        for u in tempOrderSet.iter_buy_orders():
+            for v in tempOrderSet.iter_sell_orders():
+                self.dist_uv[(
+                    u.int_order_id, v.int_order_id
+                )] = c_ij[(u.int_buyer_id, v.int_seller_id)]
+
     
     def run(self, engine: Engine):
-        # TODO: save models and matches?
+
         matcher = engine(self.order_set)
         
         matcher.construct_params()
+
+        # NOTE: This is part of the quick and dirty solution: manually setting transaction cost
+        if isinstance(matcher, OMMEngine):
+            matcher._params['c_uv'] = self.dist_uv
+
         matcher.match()
         matchset = matcher.get_matches()
 
@@ -197,7 +210,8 @@ class TestCase:
             "Seller-Surplus": {},
             "Unmatched-Supply": {},
             "Matched-Buyers": set(),
-            "Matched-Sellers": set()
+            "Matched-Sellers": set(),
+            "N_Matches": matchset.n_matches
         }
         # instatiate buyer validation metrics
         for order in self.order_set.iter_buy_orders():
@@ -251,5 +265,5 @@ class TestCase:
         summary_stats['Matched-Buyers'] = matchset.get_matched_buyers()
         summary_stats['Matched-Sellers'] = matchset.get_matched_sellers()
 
-        return summary_stats
+        return summary_stats, matchset
 
