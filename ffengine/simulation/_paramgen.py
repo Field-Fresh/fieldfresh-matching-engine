@@ -179,99 +179,64 @@ class TestCase:
                 tempSentry += 1
 
 
-
-        # format into `Orders`
-        # SellOrder: (supply, supplier, price, product, availbility, expiry, service range)
-        # (supply, supplier, product)
-        # (price, supplier, product)
-
-        # your task here: given s_ik, d_jk, l_ik, u_jk (as well as generating other info) => [(agent_id, quantity, price, ...)]
-        # construct an OrderSet with this data (should be able to just pass to the constructor) and save it to this object
-        # self.Orders = OrderSet(info)
-
         self.order_set = tempOrderSet
 
     
     def run(self, engine: Engine):
-
-        # pass self.Orders to engine
-
+        # TODO: save models and matches?
         matcher = engine(self.order_set)
+        
         matcher.construct_params()
         matcher.match()
+        matchset = matcher.get_matches()
 
-        tempMatchSet = matcher.get_matches()
+        ## Build validation metrics
+        summary_stats = {}
+        # instatiate buyer validation metrics
+        for order in self.order_set.iter_buy_orders():
 
-        listOfMatches = tempMatchSet._matches
-        numOfMatches = tempMatchSet.n_matches
+            buyer_id, product_id = order.buyer_id, order.product_id
+            product_price, product_quantity = order.max_price_cents, order.quantity
 
-        buyer_summary = {}
-        seller_summary = {}
+            summary_stats["Buyer-Surplus"][buyer_id] = 0
+            summary_stats['Unmatched-Demand'][buyer_id][product_id] = product_quantity
 
-        for b in range(self.order_set.n_buy_orders):
+        # instatiate seller validation metrics
+        for order in self.order_set.iter_sell_orders():
 
-            order = self.order_set._buy_orders[b]
-            buyer_id = order.buyer_id
-            product_id = order.product_id
-            product_price = order.max_price_cents
-            product_quantity = order.quantity
+            seller_id, product_id = order.seller_id, order.product_id
+            product_price, product_quantity = order.min_price_cents, order.quantity
 
-            buyer_summary[buyer_id][product_id]['Price'] = product_price
-            buyer_summary[buyer_id][product_id]['Quantity'] = product_quantity
+            summary_stats["Seller-Surplus"][seller_id] = 0
+            summary_stats['Unmatched-Supply'][seller_id][product_id] = product_quantity
 
-            buyer_summary[buyer_id]["Buyer-Profit"] = 0
-            buyer_summary[buyer_id][product_id]['Match-Price'] = 0
-            buyer_summary[buyer_id][product_id]['Match-Quantity'] = 0
-            buyer_summary[buyer_id][product_id]['Unmatched-Demand'] = product_quantity
+        # build validation from matches
+        for match in matchset.iter_matches():
 
+            buy_order = match.buy_order
+            sell_order = match.sell_order
 
-        for s in range(self.order_set.n_sell_orders):
-
-            order = self.order_set._sell_orders[s-order]
-            seller_id = order.seller_id
-            product_id = order.product_id
-            product_price = order.min_price_cents
-            product_quantity = order.quantity
-
-            seller_summary[seller_id][product_id]['Price'] = product_price
-            seller_summary[seller_id][product_id]['Quantity'] = product_quantity
-
-            seller_summary[seller_id]["Seller-Surplus"] = 0
-            seller_summary[seller_id][product_id]['Match-Quantity'] = 0
-            seller_summary[seller_id][product_id]['Match-Quantity'] = 0
-            seller_summary[seller_id][product_id]['Unsold-Supply'] = product_quantity
-
-
-        for m in range(numOfMatches):
-
-            match = listOfMatches[m]
-            matchBuyer = match.buy_order
-            matchSeller = match.sell_order
-
-            buyer_id = matchBuyer.buyer_id
-            seller_id = matchSeller.seller_id
-            product_id = matchBuyer.product_id
+            buyer_id, seller_id, product_id = buy_order.buyer_id, sell_order.seller_id, buy_order.product_id
 
             matchPrice = match.price_cents
             matchQuantity = match.quantity
 
-            seller_price = matchSeller.min_price_cents
-            buyer_price = matchBuyer.max_price_cents
+            seller_price = sell_order.min_price_cents
+            buyer_price = buy_order.max_price_cents
 
-            buyer_profit = (matchPrice - buyer_price) * matchQuantity
+            # TODO: Should seller surplus include transportation cost?
+            buyer_surplus = (matchPrice - buyer_price) * matchQuantity
             seller_surplus = (seller_price - matchPrice) * matchQuantity
 
-            buyer_summary[buyer_id][product_id]['Match-Quantity'] += matchQuantity
-            buyer_summary[buyer_id][product_id]['Unmatched-Demand'] -= matchQuantity
-            buyer_summary[buyer_id]["Buyer-Profit"] += buyer_profit
+            summary_stats["Buyer-Surplus"][buyer_id] += buyer_surplus
+            summary_stats['Unmatched-Demand'][buyer_id][product_id] -= matchQuantity
 
-            seller_summary[seller_id][product_id]['Match-Quantity'] += matchQuantity
-            seller_summary[seller_id][product_id]['Unsold-Supply'] -= matchQuantity
-            seller_summary[seller_id]["Seller-Surplus"] += seller_surplus
+            summary_stats["Seller-Surplus"][seller_id] += seller_surplus
+            summary_stats['Unmatched-Supply'][seller_id][product_id] -= matchQuantity
 
-        usedBuyers = tempMatchSet.get_matched_buyers
-        usedSellers = tempMatchSet.get_matched_sellers
 
-        # retreive MatchSet from engine
+        # TODO: used buyers and adding them to the summary_stats
+        # usedBuyers = matchset.get_matched_buyers()
+        # usedSellers = matchset.get_matched_sellers()
+        return summary_stats
 
-        pass  

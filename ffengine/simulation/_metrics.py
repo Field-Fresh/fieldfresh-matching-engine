@@ -27,9 +27,9 @@ class TestCaseMetrics:
     
     def surplus_plot(self, agent: str):
 
-        assert agent.lower() in ['buyer', 'seller'], "agent must be buyer or seller"
+        assert agent.lower() in ['Buyer', 'Seller'], "agent must be buyer or seller"
 
-        data = self.tables[agent + '_surplus_dist']
+        data = self.tables[agent + '-Surplus']
         bar_w = .35
         plt.figure()
         for i, comp in enumerate(data):
