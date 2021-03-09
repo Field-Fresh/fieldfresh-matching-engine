@@ -99,7 +99,7 @@ class OMMEngine(Engine):
             for sell_order in self.orderset.iter_sell_orders():
                 u, v = buy_order.int_order_id, sell_order.int_order_id
 
-                quantity = float(x_uv[u,v])
+                quantity = float(x_uv[u,v].x)
 
                 if quantity > 0:
 
@@ -108,7 +108,7 @@ class OMMEngine(Engine):
                         (buy_order.max_price_cents == model_vars['p_u'][u]) and (sell_order.min_price_cents == model_vars['p_v'][v])
                         ), "Critical assertion failed! Order IDs have got mixed up... data is wrong"
                     
-                    price = self._solved_model.price(model_vars['p_u'], model_vars['p_v'])
+                    price = self._solved_model.price(model_vars['p_u'][u], model_vars['p_v'][v])
                     
 
                     matches.add_match(

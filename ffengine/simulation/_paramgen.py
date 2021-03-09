@@ -191,7 +191,14 @@ class TestCase:
         matchset = matcher.get_matches()
 
         ## Build validation metrics
-        summary_stats = {}
+        summary_stats = {
+            "Buyer-Surplus": {},
+            "Unmatched-Demand": {},
+            "Seller-Surplus": {},
+            "Unmatched-Supply": {},
+            "Matched-Buyers": [],
+            "Matched-Sellers": []
+        }
         # instatiate buyer validation metrics
         for order in self.order_set.iter_buy_orders():
 
@@ -199,7 +206,10 @@ class TestCase:
             product_price, product_quantity = order.max_price_cents, order.quantity
 
             summary_stats["Buyer-Surplus"][buyer_id] = 0
-            summary_stats['Unmatched-Demand'][buyer_id][product_id] = product_quantity
+            if not buyer_id in summary_stats['Unmatched-Demand']:
+                summary_stats['Unmatched-Demand'][buyer_id] = {product_id : product_quantity}
+            else:
+                summary_stats['Unmatched-Demand'][buyer_id][product_id] = product_quantity
 
         # instatiate seller validation metrics
         for order in self.order_set.iter_sell_orders():
@@ -208,7 +218,10 @@ class TestCase:
             product_price, product_quantity = order.min_price_cents, order.quantity
 
             summary_stats["Seller-Surplus"][seller_id] = 0
-            summary_stats['Unmatched-Supply'][seller_id][product_id] = product_quantity
+            if not seller_id in summary_stats['Unmatched-Supply']:
+                summary_stats['Unmatched-Supply'][seller_id] = {product_id : product_quantity}
+            else:
+                summary_stats['Unmatched-Supply'][seller_id][product_id] = product_quantity
 
         # build validation from matches
         for match in matchset.iter_matches():
@@ -225,8 +238,8 @@ class TestCase:
             buyer_price = buy_order.max_price_cents
 
             # TODO: Should seller surplus include transportation cost?
-            buyer_surplus = (matchPrice - buyer_price) * matchQuantity
-            seller_surplus = (seller_price - matchPrice) * matchQuantity
+            buyer_surplus = (buyer_price - matchPrice) * matchQuantity
+            seller_surplus = (matchPrice - seller_price) * matchQuantity
 
             summary_stats["Buyer-Surplus"][buyer_id] += buyer_surplus
             summary_stats['Unmatched-Demand'][buyer_id][product_id] -= matchQuantity
