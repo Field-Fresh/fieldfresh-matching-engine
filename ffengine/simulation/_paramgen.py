@@ -196,8 +196,8 @@ class TestCase:
             "Unmatched-Demand": {},
             "Seller-Surplus": {},
             "Unmatched-Supply": {},
-            "Matched-Buyers": [],
-            "Matched-Sellers": []
+            "Matched-Buyers": set(),
+            "Matched-Sellers": set()
         }
         # instatiate buyer validation metrics
         for order in self.order_set.iter_buy_orders():
@@ -248,8 +248,8 @@ class TestCase:
             summary_stats['Unmatched-Supply'][seller_id][product_id] -= matchQuantity
 
 
-        # TODO: used buyers and adding them to the summary_stats
-        # usedBuyers = matchset.get_matched_buyers()
-        # usedSellers = matchset.get_matched_sellers()
+        summary_stats['Matched-Buyers'] = matchset.get_matched_buyers()
+        summary_stats['Matched-Sellers'] = matchset.get_matched_sellers()
+
         return summary_stats
 
