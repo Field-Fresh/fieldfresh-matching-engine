@@ -86,7 +86,36 @@ class OMMEngine(Engine):
         self._solved_model = solver
 
 
-    def get_matches(self):
-        pass
+    def get_matches(self) -> MatchSet:
+
+        matches = MatchSet()
+
+        model_vars = self._solved_model.getVars()
+        x_uv = model_vars['x_uv']
+        
+        for buy_order in self.orderset.iter_buy_orders():
+            for sell_order in self.orderset.iter_sell_orders():
+                u, v = buy_order.int_order_id, sell_order.int_order_id
+
+                quantity = float(x_uv[u,v])
+
+                if quantity > 0:
+
+                    # is this assertion necessary? We can likely remove this after some testing
+                    assert (
+                        (buy_order.max_price_cents == model_vars['p_u'][u]) and (sell_order.min_price_cents == model_vars['p_v'][v])
+                        ), "Critical assertion failed! Order IDs have got mixed up... data is wrong"
+                    
+                    price = self._solved_model.price(model_vars['p_u'], model_vars['p_v'])
+                    
+
+                    matches.add_match(
+                        Match(buy_order=buy_order, sell_order=sell_order, price_cents=price, quantity=quantity)
+                    )
+
+        self.matchset = matches
+        
+        return matches
+
 
 

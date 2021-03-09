@@ -5,11 +5,11 @@ from .orders import BuyOrder, SellOrder
 
 @dataclass
 class Match:
-    match_id: int
     buy_order: BuyOrder
     sell_order: SellOrder
     price_cents: int
     quantity: int
+    match_id: int=None
 
     def to_dict(self):
         return {
@@ -27,6 +27,7 @@ class MatchSet:
         self.n_matches = 0
     
     def add_match(self, match: Match):
+        match.match_id = self.n_matches
         self._matches.append(match)
         self.n_matches += 1
 
