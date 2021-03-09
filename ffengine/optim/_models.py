@@ -58,7 +58,7 @@ class OrderMatchingModel(gp.Model):
 
         ## objective: maximize total seller profits
 
-        obj = sum(x_uv[u,v]*(0.5*(p_u[u] + p_v[v]))-  c_uv[u,v]*w_uv[u,v] for u in BUYORDERS for v in SELLORDERS)
+        obj = sum(x_uv[u,v]*self.price(p_u[u], p_v[v])-  c_uv[u,v]*w_uv[u,v] for u in BUYORDERS for v in SELLORDERS)
 
         ## objective: maximize total surplus
 
@@ -77,13 +77,16 @@ class OrderMatchingModel(gp.Model):
         #positive seller surplus: 
         #self.addConstrs( (x_uv[u,v]*profitFunc(p_u[u],p_v[v]) - c_uv[u,v]*w_uv[u,v] >= 0 for u in BUYORDERS for v in SELLORDERS ), "(4.1) function-based seller surplus")
         
-        self.addConstrs( (x_uv[u,v]*(0.5*(p_u[u] + p_v[v])) - c_uv[u,v]*w_uv[u,v] >= 0 for u in BUYORDERS for v in SELLORDERS ), "(4.2) specific instance seller surplus")
+        self.addConstrs( (x_uv[u,v]*self.price(p_u[u], p_v[v]) - c_uv[u,v]*w_uv[u,v] >= 0 for u in BUYORDERS for v in SELLORDERS ), "(4.2) specific instance seller surplus")
 
         #feasibility contraint: If BUYORDER u is paired with SELLORDER v
         self.addConstrs( (x_uv[u,v] <= big_M*f_uv[u,v] for u in BUYORDERS for v in SELLORDERS ), "(5) feasibility requirment")
 
 
         self.setObjective(obj, GRB.MAXIMIZE)
+
+    def price(self, p_u, p_v):
+        return (p_u + p_v)/2
 
     def getVars(self) -> dict:
         return {
