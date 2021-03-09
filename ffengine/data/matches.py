@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Iterator
 
+from typing import List
+
 from .orders import BuyOrder, SellOrder
 
 @dataclass
@@ -35,3 +37,6 @@ class MatchSet:
         for m in self._matches:
             yield m
 
+    def get_matched_buyers(self) -> List[int]: pass
+
+    def get_matched_sellers(self) -> List[int]: pass
