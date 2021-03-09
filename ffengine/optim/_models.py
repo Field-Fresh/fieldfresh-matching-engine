@@ -58,11 +58,11 @@ class OrderMatchingModel(gp.Model):
 
         ## objective: maximize total seller profits
 
-        #obj = sum(x[u,v]*((0.5*(p_u[u] + p_v[v]))- c_uv[u,v]*w_uv[u,v] for u in BUYORDERS for v in SELLORDERS)
+        obj = sum(x_uv[u,v]*(0.5*(p_u[u] + p_v[v]))-  c_uv[u,v]*w_uv[u,v] for u in BUYORDERS for v in SELLORDERS)
 
         ## objective: maximize total surplus
 
-        obj = sum(x_uv[u,v]*(p_u[u] - p_v[v]) for u in BUYORDERS for v in SELLORDERS)
+        # obj = sum(x_uv[u,v]*(p_u[u] - p_v[v]) for u in BUYORDERS for v in SELLORDERS)
 
         
         #supply constraint: The quantity fulfilled cannot overexceed the available supply.
