@@ -74,11 +74,13 @@ class OMMEngine(Engine):
                 is_available = (u.time_expiry >= v.time_activation) & (v.time_expiry >= u.time_activation)
                 # 3) distance is within service region
                 is_serviceable = (d <= v.service_range)
+                # 4) price bounds are feasible
+                is_beneficial = (u.max_price_cents >= v.min_price_cents)
 
                 # 1 if all conditions are met, 0 otherwise
                 self._params['f_uv'][(
                     u.int_order_id, v.int_order_id
-                )] = int(is_same_prod & is_available & is_serviceable)
+                )] = int(is_same_prod & is_available & is_serviceable & is_beneficial)
 
     def match(self):
         solver = OrderMatchingModel(**self._params)
