@@ -138,10 +138,12 @@ class TestCase:
                     buyer_id = 'Buyer-' + str(b)
 
                 )
+                
 
-                tempOrderSet.add_buy_order(tempBuyOrder)
-
-                tempSentry += 1
+                #if the buy order is 0, we are not going to add it to the orderset. 
+                if(d_jk[b][p] >= 0):
+                    tempOrderSet.add_buy_order(tempBuyOrder)
+                    tempSentry += 1
 
         tempSentry = 0
 
@@ -197,6 +199,78 @@ class TestCase:
         matcher = engine(self.order_set)
         matcher.construct_params()
         matcher.match()
+
+        tempMatchSet = matcher.get_matches()
+
+        listOfMatches = tempMatchSet._matches
+        numOfMatches = tempMatchSet.n_matches
+
+        buyer_summary = {}
+        seller_summary = {}
+
+        for b in range(self.order_set.n_buy_orders):
+
+            order = self.order_set._buy_orders[b]
+            buyer_id = order.buyer_id
+            product_id = order.product_id
+            product_price = order.max_price_cents
+            product_quantity = order.quantity
+
+            buyer_summary[buyer_id][product_id]['Price'] = product_price
+            buyer_summary[buyer_id][product_id]['Quantity'] = product_quantity
+
+            buyer_summary[buyer_id]["Buyer-Profit"] = 0
+            buyer_summary[buyer_id][product_id]['Match-Price'] = 0
+            buyer_summary[buyer_id][product_id]['Match-Quantity'] = 0
+            buyer_summary[buyer_id][product_id]['Unmatched-Demand'] = product_quantity
+
+
+        for s in range(self.order_set.n_sell_orders):
+
+            order = self.order_set._sell_orders[s-order]
+            seller_id = order.seller_id
+            product_id = order.product_id
+            product_price = order.min_price_cents
+            product_quantity = order.quantity
+
+            seller_summary[seller_id][product_id]['Price'] = product_price
+            seller_summary[seller_id][product_id]['Quantity'] = product_quantity
+
+            seller_summary[seller_id]["Seller-Surplus"] = 0
+            seller_summary[seller_id][product_id]['Match-Quantity'] = 0
+            seller_summary[seller_id][product_id]['Match-Quantity'] = 0
+            seller_summary[seller_id][product_id]['Unsold-Supply'] = product_quantity
+
+
+        for m in range(numOfMatches):
+
+            match = listOfMatches[m]
+            matchBuyer = match.buy_order
+            matchSeller = match.sell_order
+
+            buyer_id = matchBuyer.buyer_id
+            seller_id = matchSeller.seller_id
+            product_id = matchBuyer.product_id
+
+            matchPrice = match.price_cents
+            matchQuantity = match.quantity
+
+            seller_price = matchSeller.min_price_cents
+            buyer_price = matchBuyer.max_price_cents
+
+            buyer_profit = (matchPrice - buyer_price) * matchQuantity
+            seller_surplus = (seller_price - matchPrice) * matchQuantity
+
+            buyer_summary[buyer_id][product_id]['Match-Quantity'] += matchQuantity
+            buyer_summary[buyer_id][product_id]['Unmatched-Demand'] -= matchQuantity
+            buyer_summary[buyer_id]["Buyer-Profit"] += buyer_profit
+
+            seller_summary[seller_id][product_id]['Match-Quantity'] += matchQuantity
+            seller_summary[seller_id][product_id]['Unsold-Supply'] -= matchQuantity
+            seller_summary[seller_id]["Seller-Surplus"] += seller_surplus
+
+        usedBuyers = tempMatchSet.get_matched_buyers
+        usedSellers = tempMatchSet.get_matched_sellers
 
         # retreive MatchSet from engine
 
