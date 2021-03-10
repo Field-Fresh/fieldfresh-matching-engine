@@ -9,8 +9,11 @@ from tomodachi.envelope import JsonBase
 from ffengine.data import OrderSet, BuyOrder, SellOrder
 from ffengine.optim.engines import OMMEngine
 import json
+from datetime import datetime
 
 aws_credentials = json.load(open('aws_credentials.json'))
+
+# TODO: convert `print` to logging
 
 class MatchingEngineService(tomodachi.Service):
     name = "matching-engine-service"
@@ -36,8 +39,10 @@ class MatchingEngineService(tomodachi.Service):
         },
     }
 
+    MATCHING_PERIOD_SECONDS = 1*1*2*60 # currently for testing, match ever 2m. This number is formatted as days*hours*minutes*seconds
     MATCH_BATCH_SIZE = 3
 
+    round_number = 0
     ordersets = {}
     processed_flags = {}
 
@@ -91,13 +96,13 @@ class MatchingEngineService(tomodachi.Service):
         print(len(self.ordersets[orderset_id]), total_orders)
         print(self.processed_flags[orderset_id])
         if self.processed_flags[orderset_id]['buy'] and self.processed_flags[orderset_id]['sell']:
-            
+            self.processed_flags.pop(orderset_id)
             print(f"Order set len: {len(self.ordersets[orderset_id])}")
             print(f"buy orders: {self.ordersets[orderset_id].n_buy_orders}")
             print(f"sell orders: {self.ordersets[orderset_id].n_sell_orders}")
 
             # start matching
-            matcher = OMMEngine(self.ordersets[orderset_id])
+            matcher = OMMEngine(self.ordersets.pop(orderset_id))
             matcher.construct_params()
             matcher.match()
 
@@ -124,5 +129,16 @@ class MatchingEngineService(tomodachi.Service):
                 await aws_sns_sqs_publish(self, data=data, topic="dev-field-fresh-api-sns")
 
             print("sent all responses")
+            self.round_number += 1
 
+
+    @tomodachi.schedule(interval=MATCHING_PERIOD_SECONDS, immediately=True) # immediately means to also run on startup
+    async def request_orders(self) -> None:
+        timestamp = int(datetime.utcnow().timestamp())
+        msg = {
+            "type":"mate.ready",
+            "message": {"readyTimeUTCSeconds": timestamp, "round": self.round_number}
+        }
+        await aws_sns_sqs_publish(self, data=msg, topic="dev-field-fresh-api-sns")
+        print('requested orders')   
 
