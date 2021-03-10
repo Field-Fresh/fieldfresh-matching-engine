@@ -99,7 +99,7 @@ class OrderMatchingModel(gp.Model):
             'SELLORDERS' : self.__SELLORDERS,
 
             'p_u' : self.__p_u,
-            'p_v' : self.__p_u,
+            'p_v' : self.__p_v,
             'q_u' : self.__q_u,
             'q_v' : self.__q_v,
             'c_uv' : self.__c_uv,
