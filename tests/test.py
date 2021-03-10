@@ -18,8 +18,9 @@ test_case1 = TestCase(
     s_subsize={i: len(K1) for i in I1},
     lb_fn= lambda k, i: i,
     ub_fn= lambda c, p: p,
-    dist_bounds= (1, 5),
+    dist_bounds= (3, 10),
+    unit_tcost=1
 )
 
 
-test_case1.run(OMMEngine)
+stats, matches = test_case1.run(OMMEngine)

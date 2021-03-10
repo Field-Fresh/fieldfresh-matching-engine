@@ -1,6 +1,8 @@
 import numpy as np
 from typing import Dict, Callable, Tuple, Iterable
 
+EARTH_RADIUS = 6371
+
 def exp_discount_lb_fn(max_q=1, discount=.1) -> Callable[[float, float], float]:
     # NOTE: this will converge exponentially wrt q... should this have a different convergence time? make use of max_q maybe?
     return lambda q,p: discount*p*np.exp(-q/max_q) + (1-discount)*p
@@ -63,3 +65,10 @@ class DiscreteSampler:
         for prob in self.qdf:
             if rn <= prob:
                 return self.qdf[prob]
+
+
+def arcconvert(arclen, radius=EARTH_RADIUS):
+    theta_rad = arclen / radius
+    deg = np.degrees(theta_rad) % 360 # just in case of bad inputs, make sure angle is in [0, 360]
+    return abs(deg - 180) - 90
+

@@ -24,9 +24,11 @@ class Engine(abc.ABC):
 
 class OMMEngine(Engine):
 
-    def __init__(self, orderset: OrderSet):
+    def __init__(self, orderset: OrderSet, unit_tcost=3, **kwargs):
+        # kwargs are a catchall that are ignored so that interface is the same across engines
         self.orderset = orderset
         self._params = {}
+        self.unit_tcost = unit_tcost
 
     def get_orderset(self):
         return self.orderset
@@ -65,7 +67,7 @@ class OMMEngine(Engine):
 
                 self._params['c_uv'][
                     (u.int_order_id, v.int_order_id)
-                ] = d
+                ] = d * self.unit_tcost
 
                 ## able to match criteria:
                 # 1) same product

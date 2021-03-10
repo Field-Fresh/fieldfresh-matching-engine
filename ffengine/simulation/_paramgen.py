@@ -19,7 +19,8 @@ class TestCase:
     s_subsize - size subset of product set K that supplier s will supply/produce {supplier: subset_size} (This is based on theta_i)
     lb_fn - function: (seller_capacity, product_price) -> seller lower bound price
     ub_fn - function: (buyer_capacity, product_price) -> buyer upper bound price
-    cost_bounds - (min, max) minimum and maximum transaction cost between buyers/sellers (this is in cents!)
+    dist_bounds - (min, max) minimum and maximum distance between buyers/sellers (this is in km)
+    unit_tcost - transaction cost (in cents) per distance (in km) to be fed to matching engine
 
     See https://www.dropbox.com/scl/fi/td4qd68uiwjkxmhivz6f5/Simulation-Strategy.paper?dl=0&rlkey=lylhvexxwjedxgv90h1kkgzl8 for more info
     '''
@@ -38,7 +39,8 @@ class TestCase:
         s_subsize: Dict[int, int],
         lb_fn: Callable[[int, float], float],
         ub_fn: Callable[[int, float], float],
-        cost_bounds: Tuple[float, float],
+        dist_bounds: Tuple[float, float],
+        unit_tcost: int,
         random_seed: int = 0
     ):
         np.random.seed(random_seed)
@@ -48,9 +50,11 @@ class TestCase:
         assert utils.non_zero(P_K), f'P_K has negative or 0 prices'
         # assert s_subsize.keys() == set(range(size_I)), f's_subsize has wrong keys, either incomplete or with non existent seller IDs'
         assert np.all([i <= size_K for i in s_subsize.values()]), f'subset size for a seller cannot be larger than `size_K`: {size_K}'
-        assert cost_bounds[0] >=0 and cost_bounds[1] >=0, f'cannot have negative distances. Must be (+,+)'
-
+        assert dist_bounds[0] >=0 and dist_bounds[1] >=0, f'cannot have negative distances. Must be (+,+)'
         # try Callables and assert I/O types??
+
+        dist_bounds_radius = dist_bounds[0] / 2, dist_bounds[1] / 2 # sampling is done using a radius, max distance is a diameter
+        self.model_constants = {"unit_tcost" : unit_tcost}
 
         # should these be replaced with np.random.multinomial?
 
@@ -103,8 +107,11 @@ class TestCase:
             for j in range(size_J)
         }
 
-        c_ij = {(i,j): np.random.uniform(*cost_bounds) for i in range(size_I) for j in range(size_J)}
 
+        lat_i = {i: utils.arcconvert(np.random.uniform(*dist_bounds_radius)) for i in range(size_I)}
+        lat_j = {j: utils.arcconvert(np.random.uniform(*dist_bounds_radius)) for j in range(size_J)}
+        long_i = {i: np.random.uniform(-180, 180) for i in range(size_I)}
+        long_j = {j: np.random.uniform(-180, 180) for j in range(size_J)}
         # assume lat/long, activeTimes, and ServiceRange
 
         #Loop throught buyers to create BuyOrders
@@ -124,8 +131,8 @@ class TestCase:
                     int_order_id= tempSentry,
                     int_product_id=p,
 
-                    lat = 110.1,
-                    long = 120.5,
+                    lat = lat_j[b],
+                    long = long_j[b],
                     
                     quantity = d_jk[b][p],
                     max_price_cents = u_jk[b][p],
@@ -158,8 +165,8 @@ class TestCase:
                     int_order_id= tempSentry,
                     int_product_id=p,
 
-                    lat = 110.1,
-                    long = 120.5,
+                    lat = lat_i[s],
+                    long = long_i[s],
                     
                     quantity = s_ik[s][p],
                     min_price_cents = l_ik[s][p],
@@ -181,25 +188,12 @@ class TestCase:
 
         self.order_set = tempOrderSet
 
-        # NOTE: This is a dirty solution that manually sets the cost parameter
-        self.dist_uv = {}
-        for u in tempOrderSet.iter_buy_orders():
-            for v in tempOrderSet.iter_sell_orders():
-                self.dist_uv[(
-                    u.int_order_id, v.int_order_id
-                )] = c_ij[(u.int_buyer_id, v.int_seller_id)]
-
     
     def run(self, engine: Engine):
 
-        matcher = engine(self.order_set)
+        matcher = engine(self.order_set, **self.model_constants)
         
         matcher.construct_params()
-
-        # NOTE: This is part of the quick and dirty solution: manually setting transaction cost
-        if isinstance(matcher, OMMEngine):
-            matcher._params['c_uv'] = self.dist_uv
-
         matcher.match()
         matchset = matcher.get_matches()
 
@@ -210,8 +204,7 @@ class TestCase:
             "Seller-Surplus": {},
             "Unmatched-Supply": {},
             "Matched-Buyers": set(),
-            "Matched-Sellers": set(),
-            "N_Matches": matchset.n_matches
+            "Matched-Sellers": set()
         }
         # instatiate buyer validation metrics
         for order in self.order_set.iter_buy_orders():
