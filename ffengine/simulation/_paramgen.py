@@ -30,15 +30,15 @@ class TestCase:
         size_I: int,
         size_J: int,
         size_K: int,
-        Q_K: Dict[int, float],
-        P_K: Dict[int, float],
+        Q_K: Dict[int, int],
+        P_K: Dict[int, int],
         D_scap_p: Dict[int, float],
         D_dcap_p: Dict[int, float],
         s_bounds: Callable[[int], Tuple[int, int]],
         d_bounds: Callable[[int], Tuple[int, int]],
         s_subsize: Dict[int, int],
-        lb_fn: Callable[[int, float], float],
-        ub_fn: Callable[[int, float], float],
+        lb_fn: Callable[[int, int], int],
+        ub_fn: Callable[[int, int], int],
         dist_bounds: Tuple[float, float],
         unit_tcost: int,
         random_seed: int = 0
@@ -73,7 +73,6 @@ class TestCase:
         products_i = [utils.dist_subset(Q_K, keys=np.random.choice(list(
             Q_K.keys()), size=s_subsize[theta_i], replace=False)) for theta_i in param_i]
         
-        ## Ignore everything above this
 
         # {seller_id: {product_id : quantity_supplied}}
         s_ik = {
@@ -97,7 +96,7 @@ class TestCase:
         # 6.
         # {seller_id: {product_id : min_price}}
         l_ik = {
-            i: {k: lb_fn(cap_i[i], P_K[k]) for k in P_K} ## this iterates through all products... this should only be for products for that seller
+            i: {k: lb_fn(cap_i[i], P_K[k]) for k in products_i[i].keys()}
             for i in range(size_I)
         }
         # 6 a)
@@ -203,13 +202,13 @@ class TestCase:
             "Unmatched-Demand": {},
             "Seller-Surplus": {},
             "Unmatched-Supply": {},
-            "Matched-Buyers": set(),
-            "Matched-Sellers": set()
+            "Matched-Buyers": [],
+            "Matched-Sellers": []
         }
         # instatiate buyer validation metrics
         for order in self.order_set.iter_buy_orders():
 
-            buyer_id, product_id = order.buyer_id, order.product_id
+            buyer_id, product_id = order.int_buyer_id, order.int_product_id
             product_price, product_quantity = order.max_price_cents, order.quantity
 
             summary_stats["Buyer-Surplus"][buyer_id] = 0
@@ -221,7 +220,7 @@ class TestCase:
         # instatiate seller validation metrics
         for order in self.order_set.iter_sell_orders():
 
-            seller_id, product_id = order.seller_id, order.product_id
+            seller_id, product_id = order.int_seller_id, order.int_product_id
             product_price, product_quantity = order.min_price_cents, order.quantity
 
             summary_stats["Seller-Surplus"][seller_id] = 0
@@ -236,7 +235,7 @@ class TestCase:
             buy_order = match.buy_order
             sell_order = match.sell_order
 
-            buyer_id, seller_id, product_id = buy_order.buyer_id, sell_order.seller_id, buy_order.product_id
+            buyer_id, seller_id, product_id = buy_order.int_buyer_id, sell_order.int_seller_id, buy_order.int_product_id
 
             matchPrice = match.price_cents
             matchQuantity = match.quantity
@@ -244,7 +243,6 @@ class TestCase:
             seller_price = sell_order.min_price_cents
             buyer_price = buy_order.max_price_cents
 
-            # TODO: Should seller surplus include transportation cost?
             buyer_surplus = (buyer_price - matchPrice) * matchQuantity
             seller_surplus = (matchPrice - seller_price) * matchQuantity
 
@@ -255,8 +253,8 @@ class TestCase:
             summary_stats['Unmatched-Supply'][seller_id][product_id] -= matchQuantity
 
 
-        summary_stats['Matched-Buyers'] = matchset.get_matched_buyers()
-        summary_stats['Matched-Sellers'] = matchset.get_matched_sellers()
+        summary_stats['Matched-Buyers'] = list(matchset.get_matched_buyers())
+        summary_stats['Matched-Sellers'] = list(matchset.get_matched_sellers())
 
         return summary_stats, matchset
 
