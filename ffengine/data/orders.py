@@ -108,3 +108,7 @@ class OrderSet:
         for v in self._sell_orders:
             yield v
 
+    def __len__(self):
+        return self.n_buy_orders + self.n_sell_orders
+
+
