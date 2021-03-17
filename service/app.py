@@ -4,7 +4,7 @@ from typing import Any
 import tomodachi
 from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.discovery import AWSSNSRegistration
-from tomodachi.envelope import JsonBase
+from ._msgclasses import OrderJson
 
 from ffengine.data import OrderSet, BuyOrder, SellOrder
 from ffengine.optim.engines import OMMEngine
@@ -24,7 +24,7 @@ class MatchingEngineService(tomodachi.Service):
     # See tomodachi/discovery/aws_sns_registration.py for example
     discovery = [AWSSNSRegistration]
 
-    message_envelope = JsonBase
+    message_envelope = OrderJson
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
     options = {
@@ -47,49 +47,27 @@ class MatchingEngineService(tomodachi.Service):
     processed_flags = {}
 
     @aws_sns_sqs("dev-field-fresh-mate-sns", queue_name="stage-field-fresh-matching-engine-sqs_1")
-    async def recvSystemOrders(self, data: dict) -> None:
+    async def recvSystemOrders(self, order: Any, order_type: str, batch_info: dict ) -> None:
         '''Receive new orders sent to MATE. Preprocess them (asynchronously?) and store the parameters
         '''
 
-        order_type = data["type"]
-        total_orders = data["message"]["totalMessageCount"]
-        orderset_id = data["message"]["batchId"]
-        order_info = data["message"]["message"]
 
-        order_id = order_info["id"]
-        agent_id = order_info["proxyId"]
-        product_id = order_info["productId"]
-        quantity = order_info["volume"]
-        activ_time = order_info["earliestDate"]["seconds"]
-        expir_time = order_info["latestDate"]["seconds"]
-        lat, long = order_info["lat"], order_info["long"]
+        total_orders = batch_info["totalMessageCount"]
+        orderset_id = batch_info["batchId"]
 
-        print(f"recvd order !!!: (type, id, batchId, totalOrders) {order_type, order_id, orderset_id, total_orders}")
+        # print(f"recvd order !!!: (type, batchId, totalOrders) {order_type, orderset_id, total_orders}")
 
         if not orderset_id in self.ordersets:
             print("adding new orderset")
             self.ordersets[orderset_id] = OrderSet()
-            self.processed_flags[orderset_id] = {'buy' : False, 'sell' : True}
+            self.processed_flags[orderset_id] = {'buy' : False, 'sell' : False}
 
         if order_type == "buyOrder.created":
-            price = order_info["maxPriceCents"]
-            self.ordersets[orderset_id].add_buy_order(BuyOrder(
-                order_id=order_id, buyer_id=agent_id, product_id=product_id,
-                max_price_cents=price, quantity=quantity,
-                time_activation=activ_time, time_expiry=expir_time,
-                lat=lat, long=long
-            ))
+            self.ordersets[orderset_id].add_buy_order(order)
             print('added buy order')
             self.processed_flags[orderset_id]['buy'] = (total_orders == self.ordersets[orderset_id].n_buy_orders)
         elif order_type == "sellOrder.created":
-            price = order_info["minPriceCents"]
-            service_range = order_info["serviceRadius"]
-            self.ordersets[orderset_id].add_sell_order(SellOrder(
-                order_id=order_id, seller_id=agent_id, product_id=product_id,
-                min_price_cents=price, quantity=quantity,
-                time_activation=activ_time, time_expiry=expir_time,
-                lat=lat, long=long, service_range=service_range
-            ))
+            self.ordersets[orderset_id].add_sell_order(order)
             print('added sell order')
             self.processed_flags[orderset_id]['sell'] = (total_orders == self.ordersets[orderset_id].n_sell_orders)
 
