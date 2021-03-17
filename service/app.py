@@ -98,12 +98,12 @@ class MatchingEngineService(tomodachi.Service):
                 matchbatch.append(matchdata)
 
                 if (i+1) % self.MATCH_BATCH_SIZE:
-                    data = package_matches(total_matches, orderset_id, matchbatch)
+                    data = {"type": "mate.match.batch", "message": package_matches(total_matches, orderset_id, matchbatch)}
                     await aws_sns_sqs_publish(self, data=data, topic="dev-field-fresh-api-sns")
                     matchbatch = []
             
             if len(matchbatch):
-                data = package_matches(total_matches, orderset_id, matchbatch)
+                data = data = {"type": "mate.match.batch", "message": package_matches(total_matches, orderset_id, matchbatch)}
                 await aws_sns_sqs_publish(self, data=data, topic="dev-field-fresh-api-sns")
 
             print("sent all responses")
