@@ -1,6 +1,7 @@
 import numpy as np
 import gurobipy as gp
 from typing import Dict, Callable, Tuple, Iterable
+from datetime import datetime
 
 from ffengine.optim.engines import Engine, OMMEngine
 
@@ -44,6 +45,8 @@ class TestCase:
         random_seed: int = 0
     ):
         np.random.seed(random_seed)
+        TIME_STAMP = int(datetime.utcnow().timestamp()) + 100000
+
         # assertions
         assert len(Q_K) == size_K, f'Q_K does not have {size_K} elements according to parameter `size_K`'
         assert len(P_K) == size_K, f'P_K does not have {size_K} elements according to parameter `size_K`'
@@ -133,11 +136,11 @@ class TestCase:
                     lat = lat_j[b],
                     long = long_j[b],
                     
-                    quantity = d_jk[b][p],
+                    quantity = int(d_jk[b][p]),
                     max_price_cents = u_jk[b][p],
 
-                    time_activation = 1200000,
-                    time_expiry = 1300000,
+                    time_activation = TIME_STAMP,
+                    time_expiry = TIME_STAMP + 100000,
 
                     order_id = 'BuyOrder-' + str(tempSentry),
                     product_id = 'Product-' + str(p),
@@ -147,7 +150,7 @@ class TestCase:
                 
 
                 #if the buy order is 0, we are not going to add it to the orderset. 
-                if(d_jk[b][p] >= 0):
+                if(d_jk[b][p] > 0):
                     tempOrderSet.add_buy_order(tempBuyOrder)
                     tempSentry += 1
 
@@ -167,11 +170,11 @@ class TestCase:
                     lat = lat_i[s],
                     long = long_i[s],
                     
-                    quantity = s_ik[s][p],
+                    quantity = int(s_ik[s][p]),
                     min_price_cents = l_ik[s][p],
 
-                    time_activation = 1200000,
-                    time_expiry = 1300000,
+                    time_activation = TIME_STAMP,
+                    time_expiry = TIME_STAMP + 100000,
                     service_range = 100,
 
                     order_id = 'SellOrder-' + str(tempSentry),
@@ -180,9 +183,10 @@ class TestCase:
 
                 )
 
-                tempOrderSet.add_sell_order(tempSellOrder)
-
-                tempSentry += 1
+                #if the sell order is 0, we are not going to add it to the orderset. 
+                if(s_ik[s][p] > 0):
+                    tempOrderSet.add_sell_order(tempSellOrder)
+                    tempSentry += 1
 
 
         self.order_set = tempOrderSet
