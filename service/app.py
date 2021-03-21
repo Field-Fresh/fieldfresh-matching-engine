@@ -28,6 +28,9 @@ class MatchingEngineService(tomodachi.Service):
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
     options = {
+        "http": {
+            "port": 8080,
+        },
         "aws_sns_sqs": {
             "region_name": "us-east-1",
             "aws_access_key_id": aws_credentials["aws_access_key_id"],
@@ -41,9 +44,12 @@ class MatchingEngineService(tomodachi.Service):
 
     MATCHING_PERIOD_SECONDS = 1*1*2*60 # currently for testing, match ever 2m. This number is formatted as days*hours*minutes*seconds
     MATCH_BATCH_SIZE = 3
+    MODEL_CONFIG = {"unit_tcost" : 3}
+    DEBUG_MODE = False
 
     round_number = 0
     ordersets = {}
+    _matchsets = {}
     processed_flags = {}
 
     @aws_sns_sqs("dev-field-fresh-mate-sns", queue_name="stage-field-fresh-matching-engine-sqs_1")
@@ -71,7 +77,7 @@ class MatchingEngineService(tomodachi.Service):
             print('added sell order')
             self.processed_flags[orderset_id]['sell'] = (total_orders == self.ordersets[orderset_id].n_sell_orders)
 
-        print(len(self.ordersets[orderset_id]), total_orders)
+        print(len(self.ordersets[orderset_id]))
         print(self.processed_flags[orderset_id])
         if self.processed_flags[orderset_id]['buy'] and self.processed_flags[orderset_id]['sell']:
             self.processed_flags.pop(orderset_id)
@@ -80,13 +86,16 @@ class MatchingEngineService(tomodachi.Service):
             print(f"sell orders: {self.ordersets[orderset_id].n_sell_orders}")
 
             # start matching
-            matcher = OMMEngine(self.ordersets.pop(orderset_id))
+            matcher = OMMEngine(self.ordersets.pop(orderset_id), **self.MODEL_CONFIG)
             matcher.construct_params()
             matcher.match()
 
             # return matches
             matches = matcher.get_matches()
             total_matches = matches.n_matches
+
+            if self.DEBUG_MODE:
+                self._matchsets[orderset_id] = matches
 
             package_matches = lambda total_matches, batch_id, messagelist: {
                 "batchId": batch_id, "totalMatches": total_matches, "messageSize": len(messagelist), "matches": messagelist
@@ -110,7 +119,7 @@ class MatchingEngineService(tomodachi.Service):
             self.round_number += 1
 
 
-    @tomodachi.schedule(interval=MATCHING_PERIOD_SECONDS, immediately=True) # immediately means to also run on startup
+    @tomodachi.schedule(interval=MATCHING_PERIOD_SECONDS, immediately=~DEBUG_MODE) # immediately means to also run on startup, disable when debugging
     async def request_orders(self) -> None:
         timestamp = int(datetime.utcnow().timestamp())
         msg = {
