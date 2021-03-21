@@ -3,3 +3,4 @@
 __pycache__/
 *.egg-info/
 aws_credentials.json
+service/api_test_config.json
