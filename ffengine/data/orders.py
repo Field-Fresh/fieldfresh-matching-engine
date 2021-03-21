@@ -19,6 +19,20 @@ class SellOrder:
     int_seller_id: int = None
     int_product_id: int = None
 
+    def to_dict(self):
+        return{
+            "order_id": self.order_id,
+            "seller_id": self.seller_id,
+            "product_id": self.product_id,
+            "min_price_cents": self.min_price_cents,
+            "quantity": self.quantity,
+            "time_activation": self.time_activation,
+            "time_expiry": self.time_expiry,
+            "service_range": self.service_range,
+            "lat": self.lat,
+            "long": self.long
+        }  
+
 @dataclass
 class BuyOrder:
     order_id: str
@@ -35,6 +49,19 @@ class BuyOrder:
     int_order_id: int = None
     int_buyer_id: int = None
     int_product_id: int = None
+
+    def to_dict(self):
+        return {
+            "order_id": self.order_id,
+            "buyer_id": self.buyer_id,
+            "product_id": self.product_id,
+            "max_price_cents": self.max_price_cents,
+            "quantity": self.quantity,
+            "time_activation": self.time_activation,
+            "time_expiry": self.time_expiry,
+            "lat": self.lat,
+            "long": self.long
+        }
 
 class OrderSet:
     def __init__(self):
