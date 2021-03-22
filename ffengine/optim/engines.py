@@ -107,8 +107,13 @@ class OMMEngine(Engine):
 
                     # is this assertion necessary? We can likely remove this after some testing
                     assert (
-                        (buy_order.max_price_cents == model_vars['p_u'][u]) and (sell_order.min_price_cents == model_vars['p_v'][v])
+                        (buy_order.max_price_cents == model_vars['p_u'][u]) and (sell_order.min_price_cents == model_vars['p_v'][v]) and
+                        (buy_order.quantity == model_vars['q_u'][u]) and (sell_order.quantity == model_vars['q_v'][v])
                         ), "Critical assertion failed! Order IDs have got mixed up... data is wrong"
+
+                    assert(
+                        quantity <= buy_order.quantity and quantity <=sell_order.quantity
+                    ), "Critical assertion failed! Supply/demand constraints violated"
                     
                     price = self._solved_model.price(model_vars['p_u'][u], model_vars['p_v'][v])
                     
