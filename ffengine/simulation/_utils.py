@@ -4,7 +4,6 @@ from typing import Dict, Callable, Tuple, Iterable
 EARTH_RADIUS = 6371
 
 def exp_discount_lb_fn(max_q=1, discount=.1) -> Callable[[float, float], float]:
-    # NOTE: this will converge exponentially wrt q... should this have a different convergence time? make use of max_q maybe?
     return lambda q,p: discount*p*np.exp(-q/max_q) + (1-discount)*p
 
 
