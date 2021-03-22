@@ -28,24 +28,6 @@ class APITester:
         assert _r.status_code == SUCCESS_STATUS, "API not setup or products DB not intialized properly or api-url is wrong"
         self.products = {i: d['id'] for i, d in enumerate(_r.json()['products'])}
 
-    # TODO: remove this when API auth is fixed
-    def set_test_user_id(self, test_user_id):
-        '''temporary - should be removed once API auth is fixed'''
-        self.test_userId = test_user_id
-
-    # TODO: remove this when API auth is fixed
-    def init_test_user_proxy(self):
-        requests.post(url=self.endpoint_proxy_create, json={
-                            "userId": self.test_userId,
-                            "name": "test-proxy-init-0",
-                            "streetAddress": "TEST",
-                            "city": "TEST",
-                            "province": "TEST",
-                            "country": "TEST",
-                            "postalCode": "TEST",
-                            "lat": 0,
-                            "long": 0
-                        } )
     
     def signin(self):
         signin_resp = requests.post(
