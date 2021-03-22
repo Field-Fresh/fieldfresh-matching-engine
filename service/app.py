@@ -44,7 +44,7 @@ class MatchingEngineService(tomodachi.Service):
 
     MATCHING_PERIOD_SECONDS = 1*1*2*60 # currently for testing, match ever 2m. This number is formatted as days*hours*minutes*seconds
     MATCH_BATCH_SIZE = 3
-    MODEL_CONFIG = {"unit_tcost" : 3}
+    MODEL_CONFIG = {"unit_tcost" : 300}
     DEBUG_MODE = False
 
     round_number = 0
@@ -108,14 +108,16 @@ class MatchingEngineService(tomodachi.Service):
 
                 if (i+1) % self.MATCH_BATCH_SIZE:
                     data = {"type": "mate.match.batch", "message": package_matches(total_matches, orderset_id, matchbatch)}
+                    print("sending: ", data)
                     await aws_sns_sqs_publish(self, data=data, topic="dev-field-fresh-api-sns")
                     matchbatch = []
             
             if len(matchbatch):
-                data = data = {"type": "mate.match.batch", "message": package_matches(total_matches, orderset_id, matchbatch)}
+                data = {"type": "mate.match.batch", "message": package_matches(total_matches, orderset_id, matchbatch)}
+                print("sending: ", data)
                 await aws_sns_sqs_publish(self, data=data, topic="dev-field-fresh-api-sns")
 
-            print("sent all responses")
+            print(f"sent all responses: {matches.n_matches} matches")
             self.round_number += 1
 
 
