@@ -137,7 +137,7 @@ class TestCase:
                     long = long_j[b],
                     
                     quantity = int(d_jk[b][p]),
-                    max_price_cents = u_jk[b][p],
+                    max_price_cents = int(u_jk[b][p]),
 
                     time_activation = TIME_STAMP,
                     time_expiry = TIME_STAMP + 100000,
@@ -171,7 +171,7 @@ class TestCase:
                     long = long_i[s],
                     
                     quantity = int(s_ik[s][p]),
-                    min_price_cents = l_ik[s][p],
+                    min_price_cents = int(l_ik[s][p]),
 
                     time_activation = TIME_STAMP,
                     time_expiry = TIME_STAMP + 100000,

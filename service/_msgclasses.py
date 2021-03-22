@@ -22,14 +22,14 @@ class OrderJson(object):
         order_id = order_info["id"]
         agent_id = order_info["proxyId"]
         product_id = order_info["productId"]
-        quantity = order_info["volume"]
+        quantity = int(order_info["volume"])
         activ_time = order_info["earliestDate"]["seconds"]
         expir_time = order_info["latestDate"]["seconds"]
         lat, long = order_info["lat"], order_info["long"]
 
         order=None
         if order_type == "buyOrder.created":
-            price = order_info["maxPriceCents"]
+            price = int(order_info["maxPriceCents"])
 
             order = BuyOrder(
                 order_id=order_id, buyer_id=agent_id, product_id=product_id,
@@ -39,7 +39,7 @@ class OrderJson(object):
             )
         
         elif order_type == "sellOrder.created":
-            price = order_info["minPriceCents"]
+            price = int(order_info["minPriceCents"])
             service_range = order_info["serviceRadius"]
 
             order = SellOrder(
