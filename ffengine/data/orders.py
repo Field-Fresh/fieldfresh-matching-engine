@@ -77,6 +77,9 @@ class OrderSet:
         self.n_buyers = 0
         self.n_products = 0
     
+    @property
+    def total_orders(self):
+        return self.n_buy_orders + self.n_sell_orders
 
     def add_buy_order(self, order: BuyOrder):
     
