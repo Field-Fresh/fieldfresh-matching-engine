@@ -10,8 +10,15 @@ from ffengine.data import OrderSet, BuyOrder, SellOrder
 from ffengine.optim.engines import OMMEngine
 import json
 from datetime import datetime
+import asyncio
+
+import debugpy
+import time
 
 aws_credentials = json.load(open('aws_credentials.json'))
+
+# debugpy.listen(8090)
+# time.sleep(10)
 
 # TODO: convert `print` to logging
 
@@ -47,43 +54,55 @@ class MatchingEngineService(tomodachi.Service):
     MODEL_CONFIG = {"unit_tcost" : 300}
     DEBUG_MODE = False
 
+    global_lock = asyncio.Lock()
     round_number = 0
     ordersets = {}
+    datalocks = {}
     _matchsets = {}
     processed_flags = {}
 
     @aws_sns_sqs("dev-field-fresh-mate-sns", queue_name="stage-field-fresh-matching-engine-sqs_1")
     async def recvSystemOrders(self, order: Any, order_type: str, batch_info: dict ) -> None:
-        '''Receive new orders sent to MATE. Preprocess them (asynchronously?) and store the parameters
+        '''Receive new orders sent to MATE. Preprocess them and store the parameters.
         '''
 
 
         total_orders = batch_info["totalMessageCount"]
         orderset_id = batch_info["batchId"]
 
-        # print(f"recvd order !!!: (type, batchId, totalOrders) {order_type, orderset_id, total_orders}")
+        async with self.global_lock:
+            if not orderset_id in self.ordersets:
+                print("adding new orderset")
+                self.ordersets[orderset_id] = OrderSet()
+                self.datalocks[orderset_id] = asyncio.Lock()
+                self.processed_flags[orderset_id] = {'buy' : False, 'sell' : False}
 
-        if not orderset_id in self.ordersets:
-            print("adding new orderset")
-            self.ordersets[orderset_id] = OrderSet()
-            self.processed_flags[orderset_id] = {'buy' : False, 'sell' : False}
+        async with self.datalocks[orderset_id]:
+            if order_type == "buyOrder.created":
+                try:
+                    self.ordersets[orderset_id].add_buy_order(order)
+                    print('added buy order')
+                except ValueError as e:
+                    print(e)
+                self.processed_flags[orderset_id]['buy'] = (total_orders == self.ordersets[orderset_id].n_buy_orders)
+            elif order_type == "sellOrder.created":
+                try:
+                    self.ordersets[orderset_id].add_sell_order(order)
+                    print('added sell order')
+                except ValueError as e:
+                    print(e)
+                self.processed_flags[orderset_id]['sell'] = (total_orders == self.ordersets[orderset_id].n_sell_orders)
 
-        if order_type == "buyOrder.created":
-            self.ordersets[orderset_id].add_buy_order(order)
-            print('added buy order')
-            self.processed_flags[orderset_id]['buy'] = (total_orders == self.ordersets[orderset_id].n_buy_orders)
-        elif order_type == "sellOrder.created":
-            self.ordersets[orderset_id].add_sell_order(order)
-            print('added sell order')
-            self.processed_flags[orderset_id]['sell'] = (total_orders == self.ordersets[orderset_id].n_sell_orders)
-
-        print(len(self.ordersets[orderset_id]))
+        print(len(self.ordersets[orderset_id]), len(self.ordersets[orderset_id]._all_orders))
         print(self.processed_flags[orderset_id])
         if self.processed_flags[orderset_id]['buy'] and self.processed_flags[orderset_id]['sell']:
             self.processed_flags.pop(orderset_id)
+            self.datalocks.pop(orderset_id)
             print(f"Order set len: {len(self.ordersets[orderset_id])}")
             print(f"buy orders: {self.ordersets[orderset_id].n_buy_orders}")
             print(f"sell orders: {self.ordersets[orderset_id].n_sell_orders}")
+
+            assert len(self.ordersets[orderset_id]) == len(self.ordersets[orderset_id]._all_orders), f"Critical failure: {len(self.ordersets[orderset_id]) - len(self.ordersets[orderset_id]._all_orders)} duplicated orders"
 
             # start matching
             matcher = OMMEngine(self.ordersets.pop(orderset_id), **self.MODEL_CONFIG)

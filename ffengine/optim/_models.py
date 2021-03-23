@@ -46,7 +46,7 @@ class OrderMatchingModel(gp.Model):
         super().__init__('order-matching-model')
 
         ## decision variables
-        self.__x_uv = x_uv = self.addVars(BUYORDERS, SELLORDERS, name='x_uv')
+        self.__x_uv = x_uv = self.addVars(BUYORDERS, SELLORDERS, vtype=GRB.INTEGER, name='x_uv')
         self.__w_uv = w_uv = self.addVars(BUYORDERS, SELLORDERS, vtype=GRB.BINARY, name='w_uv')
         self.__y_u = y_u = self.addVars(BUYORDERS, vtype=GRB.BINARY, name='y_u' )
 

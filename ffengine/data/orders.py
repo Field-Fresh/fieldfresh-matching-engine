@@ -65,11 +65,13 @@ class BuyOrder:
 
 class OrderSet:
     def __init__(self):
-        self._buy_orders = []
-        self._sell_orders = []
+        self._buy_orders = {}
+        self._sell_orders = {}
         self._buyers = {}
         self._sellers = {}
         self._products = {}
+
+        self._all_orders = {}
 
         self.n_sell_orders = 0
         self.n_buy_orders = 0
@@ -87,9 +89,6 @@ class OrderSet:
         new_int_agent = len(self._buyers)
         new_int_product = len(self._products)
 
-        self.n_buy_orders += 1
-        self._buy_orders.append(order)
-
         agent = order.buyer_id
         product = order.product_id
 
@@ -99,10 +98,17 @@ class OrderSet:
         if not (product in self._products):
             self._products[product] = new_int_product
             self.n_products += 1
-        
-        order.int_order_id = new_int_id
-        order.int_buyer_id = self._buyers[agent]
-        order.int_product_id = self._products[product]
+
+        if not (order.order_id in self._buy_orders):
+            self._buy_orders[order.order_id] = order
+            self.n_buy_orders += 1
+
+            order.int_order_id = new_int_id
+            order.int_buyer_id = self._buyers[agent]
+            order.int_product_id = self._products[product]
+            self._all_orders[order.order_id] = order
+        else:
+            raise ValueError(f"Buy Order: {order.order_id} already exists in orderset")
 
 
     def add_sell_order(self, order: SellOrder):
@@ -111,8 +117,6 @@ class OrderSet:
         new_int_agent = len(self._sellers)
         new_int_product = len(self._products)
 
-        self._sell_orders.append(order)
-        self.n_sell_orders += 1
 
         agent = order.seller_id
         product = order.product_id
@@ -123,22 +127,31 @@ class OrderSet:
         if not (product in self._products):
             self._products[product] = new_int_product
             self.n_products += 1
-        
-        order.int_order_id = new_int_id
-        order.int_buyer_id = self._sellers[agent]
-        order.int_product_id = self._products[product]
+
+        if not (order.order_id in self._sell_orders ):
+            self._sell_orders[order.order_id] = order
+            self.n_sell_orders += 1
+            order.int_order_id = new_int_id
+            order.int_seller_id = self._sellers[agent]
+            order.int_product_id = self._products[product]
+
+            self._all_orders[order.order_id] = order
+        else:
+            raise ValueError(f"Sell Order: {order.order_id} already exists in orderset")
 
 
     def iter_buy_orders(self) -> Iterator[BuyOrder]:
-        for u in self._buy_orders:
+        for u in self._buy_orders.values():
             yield u
 
     
     def iter_sell_orders(self) -> Iterator[SellOrder]:
-        for v in self._sell_orders:
+        for v in self._sell_orders.values():
             yield v
 
     def __len__(self):
         return self.n_buy_orders + self.n_sell_orders
 
+    def __getitem__(self, order_id):
+        return self._all_orders[order_id]
 

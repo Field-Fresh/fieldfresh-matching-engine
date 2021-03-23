@@ -101,7 +101,7 @@ class OMMEngine(Engine):
             for sell_order in self.orderset.iter_sell_orders():
                 u, v = buy_order.int_order_id, sell_order.int_order_id
 
-                quantity = float(x_uv[u,v].x)
+                quantity = int(x_uv[u,v].x)
 
                 if quantity > 0:
 

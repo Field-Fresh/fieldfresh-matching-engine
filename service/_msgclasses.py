@@ -49,7 +49,7 @@ class OrderJson(object):
                 lat=lat, long=long, service_range=service_range
             )
 
-        print("success!")
+        print(f"Recvd Order: {order.to_dict()}")
 
         return (
             {
